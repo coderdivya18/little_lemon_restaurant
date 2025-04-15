@@ -11,12 +11,12 @@ export default function Header() {
           <h2>Little Lemon</h2>
           <h3>Chicago</h3>
           <p>
-            We are a family owned Mediterraneran restuarent, focusd on
+            We are a family owned Mediterraneran restaurant, focusd on
             traditional recipes served with modern twist.
           </p>
           <Link to="/booking">
             {" "}
-            <button aria-label="on Click ">Reserve Table</button>
+            <button aria-label="on Click ">Reserve a Table</button>
           </Link>
         </div>
         
