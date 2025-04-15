@@ -1,9 +1,7 @@
 import React from 'react'
 
-function Main() {
+export default function Main() {
   return (
-    <div>Main</div>
+    <main className='main'>Main</main>
   )
 }
-
-export default Main
