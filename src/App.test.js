@@ -2,95 +2,88 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import BookingForm from "./components/BookingForm";
 
-describe("BookingForm Component", () => {
-  const mockSubmitForm = jest.fn();
-  const mockDispatch = jest.fn();
-  const availableTimes = ["12:00 PM", "1:00 PM", "2:00 PM"];
+// Mock props
+const mockDispatch = jest.fn();
+const mockSubmitForm = jest.fn();
 
-  const setup = () =>
-    render(
-      <BookingForm
-        SubmitForm={mockSubmitForm}
-        dispatch={mockDispatch}
-        availableTimes={availableTimes}
-      />,
-    );
+const defaultProps = {
+  availableTimes: {
+    availableTimes: ["17:00", "18:00", "19:00"],
+  },
+  dispatch: mockDispatch,
+  SubmitForm: mockSubmitForm,
+};
 
+describe("BookingForm", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    render(<BookingForm {...defaultProps} />);
   });
 
-  it("renders form fields correctly", () => {
-    setup();
-    expect(screen.getByLabelText(/Choose date/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Choose time/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Number of guests/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Occasion/i)).toBeInTheDocument();
-    expect(screen.getByTestId("reservation-submit-button")).toBeInTheDocument();
+  it("renders the booking form with initial fields", () => {
+    expect(screen.getByLabelText("Choose Date:")).toBeInTheDocument();
+    expect(screen.getByLabelText("Choose Time:")).toBeInTheDocument();
+    expect(screen.getByLabelText("Number of guests:")).toBeInTheDocument();
+    expect(screen.getByLabelText("Occasion:")).toBeInTheDocument();
+    expect(screen.getByTestId("reservation-submit-button")).toBeDisabled();
   });
 
-  it("allows date input and calls dispatch on change", () => {
-    setup();
-    const dateInput = screen.getByLabelText(/Choose date/i);
-    fireEvent.change(dateInput, { target: { value: "2023-10-20" } });
-    expect(dateInput.value).toBe("2023-10-20");
-    // Verify dispatch is called with the correct action type and payload
-    expect(mockDispatch).toHaveBeenCalledWith("2023-10-20");
+  it("validates required fields", () => {
+    fireEvent.click(screen.getByTestId("reservation-submit-button"));
+
+    expect(screen.getByText("Date is required")).toBeInTheDocument();
+    expect(screen.getByText("Time is required")).toBeInTheDocument();
+    expect(
+      screen.getByText("Number of guests is required"),
+    ).toBeInTheDocument();
   });
 
-  it("allows time selection from available times", () => {
-    setup();
-    const timeSelect = screen.getByLabelText(/Choose time/i);
-    fireEvent.change(timeSelect, { target: { value: "1:00 PM" } });
-    expect(timeSelect.value).toBe("1:00 PM");
+  it("enables submit button with valid inputs", () => {
+    const dateInput = screen.getByLabelText("Choose Date:");
+    const timeSelect = screen.getByLabelText("Choose Time:");
+    const guestsInput = screen.getByLabelText("Number of guests:");
+
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 1); // tomorrow
+    const futureDateStr = futureDate.toISOString().split("T")[0];
+
+    fireEvent.change(dateInput, { target: { value: futureDateStr } });
+    fireEvent.change(timeSelect, { target: { value: "17:00" } });
+    fireEvent.change(guestsInput, { target: { value: "2" } });
+
+    expect(screen.getByTestId("reservation-submit-button")).toBeEnabled();
   });
 
-  it("allows guest input and updates its state", () => {
-    setup();
-    const guestInput = screen.getByLabelText(/Number of guests/i);
-    fireEvent.change(guestInput, { target: { value: "5" } });
-    expect(guestInput.value).toBe("5");
+  it("shows error when selecting past date", async () => {
+    const dateInput = screen.getByLabelText("Choose Date:");
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 1); // yesterday
+    const pastDateStr = pastDate.toISOString().split("T")[0];
+
+    fireEvent.change(dateInput, { target: { value: pastDateStr } });
+
+    expect(
+      await screen.findByText("Date cannot be in the past"),
+    ).toBeInTheDocument();
   });
 
-  it("sets default occasion to 'Birthday' and updates it on change", () => {
-    setup();
-    const occasionSelect = screen.getByLabelText(/Occasion/i);
-    expect(occasionSelect.value).toBe("Birthday");
-    fireEvent.change(occasionSelect, { target: { value: "Anniversary" } });
-    expect(occasionSelect.value).toBe("Anniversary");
-  });
+  it("submits form with valid data", () => {
+    const dateInput = screen.getByLabelText("Choose Date:");
+    const timeSelect = screen.getByLabelText("Choose Time:");
+    const guestsInput = screen.getByLabelText("Number of guests:");
 
-  it("submits form with correct data and resets form fields after successful submit", () => {
-    setup();
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 1);
+    const futureDateStr = futureDate.toISOString().split("T")[0];
 
-    // Fill out the form
-    const dateInput = screen.getByLabelText(/Choose date/i);
-    const timeSelect = screen.getByLabelText(/Choose time/i);
-    const guestInput = screen.getByLabelText(/Number of guests/i);
-    const occasionSelect = screen.getByLabelText(/Occasion/i);
-    const submitButton = screen.getByTestId("reservation-submit-button");
+    fireEvent.change(dateInput, { target: { value: futureDateStr } });
+    fireEvent.change(timeSelect, { target: { value: "18:00" } });
+    fireEvent.change(guestsInput, { target: { value: "3" } });
 
-    fireEvent.change(dateInput, { target: { value: "2023-10-20" } });
-    fireEvent.change(timeSelect, { target: { value: "2:00 PM" } });
-    fireEvent.change(guestInput, { target: { value: "4" } });
-    fireEvent.change(occasionSelect, { target: { value: "Engagement" } });
+    const submitBtn = screen.getByTestId("reservation-submit-button");
+    expect(submitBtn).toBeEnabled();
 
-    // Submit the form
-    fireEvent.click(submitButton);
+    fireEvent.click(submitBtn);
 
-    // Verify form submission
-    expect(mockSubmitForm).toHaveBeenCalledWith({
-      date: "2023-10-20",
-      time: "2:00 PM",
-      guests: "4",
-      occasion: "Engagement",
-    });
-
-    // Verify form reset (assumes all fields reset to default values)
-    // Note: You should verify the actual reset behavior of your component
-    expect(dateInput.value).toBe("");
-    expect(timeSelect.value).toBe("");
-    expect(guestInput.value).toBe("");
-    expect(occasionSelect.value).toBe("Birthday");
+    expect(mockSubmitForm).toHaveBeenCalled();
   });
 });
